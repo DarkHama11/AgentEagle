@@ -1,0 +1,4 @@
+﻿{
+    "prompt": "Una empresa quiere asegurarse de que las credenciales de acceso a sus instancias EC2 nunca se almacenen dentro del codigo ni en variables de entorno. Tambien necesitan que los permisos puedan rotarse automaticamente sin modificar las aplicaciones. ¿Que solucion de AWS es la mas adecuada? A. Guardar las credenciales en AWS Systems Manager Parameter Store (SecureString) B. Crear un usuario IAM con claves de acceso y distribuirlas a las instancias EC2 C. Asignar un IAM Role a la instancia EC2 con los permisos necesarios D. Guardar las claves en un bucket S3 cifrado con SSE-KMS",
+    "agent": "seguridad"
+}

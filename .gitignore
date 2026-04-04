@@ -1,0 +1,48 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+
+# Entornos virtuales
+.venv/
+venv/
+ENV/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs y datos temporales
+logs/*.log
+data/cache/*
+!data/cache/.gitkeep
+data/logs/*
+!data/logs/.gitkeep
+
+# Modelos grandes
+models/*.bin
+models/*.pt
+*.gguf
+*.safetensors
+
+# Secrets y credenciales
+.env
+*.key
+*.pem
+secrets.json
+credentials.json
+aws_credentials.json
+
+# Reportes de tests
+logs/search_test_report_*.json
+
+# Resultados de ejecución
+results/
+output/
+*.tmp

@@ -1,0 +1,305 @@
+# tools/security_search.py
+"""OpenClaw++ - Módulo de búsqueda web especializada en seguridad cloud."""
+import logging
+import time
+import hashlib
+import re
+import unicodedata
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple, Any
+from pathlib import Path
+
+# ✅ IMPORT CORREGIDO: ddgs primero, fallback a duckduckgo_search
+try:
+    from ddgs import DDGS
+
+    DDGS_AVAILABLE = True
+except ImportError:
+    try:
+        # Fallback para compatibilidad con versión antigua
+        from duckduckgo_search import DDGS
+
+        DDGS_AVAILABLE = True
+        logging.warning("⚠️ Usando duckduckgo_search antiguo. Actualiza con: pip install ddgs")
+    except ImportError:
+        DDGS_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
+
+
+class SecuritySearch:
+    """
+    Buscador especializado en seguridad cloud con soporte para:
+    • CVEs (cve.mitre.org, nvd.nist.gov, cisa.gov)
+    • MITRE ATT&CK (attack.mitre.org)
+    • AWS/Azure/GCP docs oficiales
+    • Compliance frameworks (CIS, NIST, ISO)
+    """
+
+    OFFICIAL_SOURCES = {
+        "cve": ["cve.mitre.org", "nvd.nist.gov", "cisa.gov", "aws.amazon.com/security"],
+        "mitre": ["attack.mitre.org", "mitre.org"],
+        "aws": ["docs.aws.amazon.com", "aws.amazon.com/security", "github.com/aws"],
+        "azure": ["learn.microsoft.com", "azure.microsoft.com/security"],
+        "gcp": ["cloud.google.com", "cloud.google.com/security"],
+        "compliance": ["cisecurity.org", "csrc.nist.gov", "iso.org"],
+    }
+
+    CATEGORY_KEYWORDS = {
+        "cve": ["cve", "vulnerability", "exploit", "patch", "security bulletin", "vulnerabilidad"],
+        "mitre": ["mitre", "att&ck", "t1059", "t1078", "tactic", "technique", "mitigation"],
+        "aws": ["aws", "amazon web services", "ec2", "s3", "iam", "lambda", "cloudtrail"],
+        "azure": ["azure", "microsoft azure", "entra id", "defender for cloud", "sentinel"],
+        "gcp": ["gcp", "google cloud", "cloud kms", "security command center"],
+        "compliance": ["cis", "nist", "iso 27001", "pci dss", "hipaa", "gdpr", "compliance"],
+    }
+
+    QUERY_TRANSLATIONS = {
+        "último": "latest", "última": "latest", "reciente": "recent",
+        "nuevo": "new", "nueva": "new", "cómo": "how to", "como": "how to",
+        "proteger": "protect", "seguridad": "security",
+        "mejores prácticas": "best practices", "mejores practicas": "best practices",
+        "ejemplo": "example", "ejemplos": "examples",
+        "política": "policy", "politica": "policy",
+        "mínimo privilegio": "least privilege", "minimo privilegio": "least privilege",
+        "capacidades": "capabilities", "detección": "detection", "deteccion": "detection",
+        "recomendaciones": "recommendations", "características": "features",
+        "caracteristicas": "features", "controles": "controls",
+        "vulnerabilidad": "vulnerability", "zero-day": "zero-day",
+    }
+
+    def __init__(self, timeout: int = 10, cache_ttl_hours: int = 24):
+        self.timeout = timeout
+        self.cache_ttl = timedelta(hours=cache_ttl_hours)
+        self._cache: Dict[str, Tuple[List[Dict], datetime]] = {}
+        self._initialized = False
+
+        if not DDGS_AVAILABLE:
+            logger.warning("⚠️ ddgs/duckduckgo_search no disponible. Búsqueda web deshabilitada.")
+        else:
+            self._initialized = True
+            logger.info("🔐 SecuritySearch inicializado (cloud security)")
+
+    def _normalize_query(self, query: str) -> str:
+        """Normaliza query: remueve acentos y traduce términos clave."""
+        normalized = unicodedata.normalize('NFKD', query)
+        normalized = ''.join(c for c in normalized if not unicodedata.combining(c))
+
+        for es_term, en_term in self.QUERY_TRANSLATIONS.items():
+            normalized = re.sub(r'\b' + re.escape(es_term) + r'\b', en_term, normalized, flags=re.I)
+
+        return normalized.strip()
+
+    def _get_cache_key(self, query: str, category: str = "general") -> str:
+        content = f"{category}:{query.lower().strip()}"
+        return hashlib.sha256(content.encode()).hexdigest()[:16]
+
+    def _is_cache_valid(self, timestamp: datetime) -> bool:
+        return datetime.now() - timestamp < self.cache_ttl
+
+    def _cleanup_cache(self):
+        expired_keys = [k for k, (_, ts) in self._cache.items() if not self._is_cache_valid(ts)]
+        for k in expired_keys:
+            del self._cache[k]
+
+    def search_with_cache(self, query: str, num_results: int = 4, category: str = "general") -> List[Dict]:
+        cache_key = self._get_cache_key(query, category)
+
+        if cache_key in self._cache:
+            results, timestamp = self._cache[cache_key]
+            if self._is_cache_valid(timestamp):
+                logger.debug(f"📦 Cache hit para: {query[:50]}...")
+                return results
+
+        logger.info(f"🔍 Búsqueda real (cache miss): {query[:50]}...")
+        results = self.search_safe(query, num_results=num_results, category=category)
+
+        if results and results[0].get("title") and "error" not in results[0]:
+            self._cache[cache_key] = (results, datetime.now())
+            self._cleanup_cache()
+
+        return results
+
+    def search_safe(self, query: str, num_results: int = 4, category: str = "general",
+                    source_filter: Optional[str] = None) -> List[Dict]:
+        if not self._initialized:
+            return [{"error": "SecuritySearch no inicializado - ddgs no disponible"}]
+
+        try:
+            start_time = time.time()
+            normalized_query = self._normalize_query(query)
+
+            with DDGS(timeout=self.timeout) as ddgs:
+                results = list(ddgs.text(normalized_query, max_results=num_results))
+
+            # Fallback con query original si no hay resultados
+            if not results:
+                logger.info(f"🔄 Fallback: intentando con query original: {query[:50]}...")
+                with DDGS(timeout=self.timeout) as ddgs:
+                    results = list(ddgs.text(query, max_results=num_results))
+
+            if not results:
+                logger.warning(f"⚠️ Sin resultados para: {query[:50]}...")
+                return [{"error": f"No se encontraron resultados para: {query}"}]
+
+            formatted = []
+            for r in results[:num_results]:
+                if source_filter and source_filter not in r.get("href", "").lower():
+                    continue
+                formatted.append({
+                    "title": r.get("title", "")[:200],
+                    "url": r.get("href", ""),
+                    "snippet": r.get("body", "")[:300],
+                    "domain": self._extract_domain(r.get("href", "")),
+                    "timestamp": datetime.now().isoformat()
+                })
+
+            elapsed = (time.time() - start_time) * 1000
+            logger.debug(f"✅ Búsqueda completada: {len(formatted)} resultados en {elapsed:.0f}ms")
+            return formatted if formatted else [{"error": "No hay resultados después de filtrar"}]
+
+        except Exception as e:
+            logger.error(f"❌ Error en búsqueda: {type(e).__name__}: {e}")
+            return [{"error": f"Error de búsqueda: {str(e)[:150]}"}]
+
+    def _extract_domain(self, url: str) -> str:
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            domain = parsed.netloc or parsed.path
+            if domain.startswith("www."):
+                domain = domain[4:]
+            return domain.split("/")[0]
+        except:
+            return url[:50]
+
+    def _validate_result_quality(self, results: List[Dict], expected_keywords: List[str]) -> Tuple[bool, str]:
+        if not results or "error" in results[0]:
+            return False, "Sin resultados válidos"
+
+        for result in results[:3]:
+            content = (result.get("title", "") + " " + result.get("snippet", "") +
+                       result.get("domain", "") + " " + result.get("url", "")).lower()
+
+            found_count = 0
+            for kw in expected_keywords:
+                kw_lower = kw.lower()
+                if kw_lower in content:
+                    found_count += 1
+                elif kw_lower.replace("-", "").replace(" ", "") in content.replace("-", "").replace(" ", ""):
+                    found_count += 1
+
+            if found_count >= len(expected_keywords) * 0.4:
+                return True, f"✅ {found_count}/{len(expected_keywords)} keywords encontradas"
+
+        return False, f"Solo {found_count}/{len(expected_keywords)} keywords encontradas"
+
+    def should_trigger_security_search(self, user_input: str) -> Tuple[bool, str, Optional[str]]:
+        t = user_input.lower()
+        trigger_keywords = ["último", "última", "reciente", "nuevo", "nueva", "actual", "hoy",
+                            "2026", "2025", "cve", "vulnerabilidad", "exploit", "zero-day",
+                            "mitre", "att&ck", "t1059", "t1078", "mejores prácticas", "best practices"]
+
+        if not any(kw in t for kw in trigger_keywords):
+            return False, user_input, None
+
+        category = None
+        for cat, keywords in self.CATEGORY_KEYWORDS.items():
+            if any(kw in t for kw in keywords):
+                category = cat
+                break
+
+        if category == "cve" and re.search(r'CVE-\d{4}-\d+', t, re.I):
+            cve_match = re.search(r'CVE-\d{4}-\d+', t, re.I)
+            search_query = cve_match.group() if cve_match else user_input
+        elif category == "mitre" and re.search(r'[Tt]\d{4}', t):
+            technique_match = re.search(r'[Tt]\d{4}(\.\d{3})?', t)
+            search_query = f"MITRE ATT&CK {technique_match.group()} cloud security" if technique_match else user_input
+        elif category in ["aws", "azure", "gcp"]:
+            service_match = re.search(r'(s3|ec2|iam|lambda|guardduty|cloudtrail|kms|vpc|eks|ecs)', t)
+            if service_match and category == "aws":
+                search_query = f"AWS {service_match.group().upper()} security best practices"
+            else:
+                search_query = f"{category.upper()} cloud security {user_input[:50]}"
+        else:
+            search_query = user_input
+
+        return True, search_query, category
+
+    def buscar_cve(self, cve_id: str) -> List[Dict]:
+        cve_id = cve_id.upper()
+        if not re.match(r'CVE-\d{4}-\d+', cve_id):
+            return [{"error": f"Formato de CVE inválido: {cve_id}. Usa CVE-YYYY-NNNNN"}]
+        query = f"{cve_id} vulnerability details mitigation"
+        return self.search_with_cache(query, num_results=5, category="cve")
+
+    def buscar_cve_recientes(self, limit: int = 5, severity: str = "critical") -> List[Dict]:
+        severity_filter = f"{severity} severity " if severity else ""
+        query = f"{severity_filter}recent CVE vulnerabilities cloud aws azure gcp 2026"
+        return self.search_with_cache(query, num_results=limit, category="cve")
+
+    def buscar_mitre_technique(self, technique_id: str) -> List[Dict]:
+        technique_id = technique_id.upper()
+        if not re.match(r'^[Tt]\d{4}(\.\d{3})?$', technique_id):
+            return [{"error": f"Formato de técnica MITRE inválido: {technique_id}"}]
+        query = f"MITRE ATT&CK {technique_id} cloud security detection mitigation"
+        return self.search_with_cache(query, num_results=5, category="mitre")
+
+    def buscar_aws_security(self, service_name: str) -> List[Dict]:
+        queries = [
+            f"AWS {service_name} security best practices site:docs.aws.amazon.com",
+            f"Amazon {service_name} security configuration site:aws.amazon.com",
+            f"AWS {service_name} compliance CIS benchmark",
+            f"AWS {service_name} security guide",
+        ]
+        for query in queries:
+            results = self.search_safe(query, num_results=4, category="aws")
+            if results and "error" not in results[0] and len(results) >= 2:
+                return results
+        return self.search_with_cache(f"AWS {service_name} security", num_results=4, category="aws")
+
+    def buscar_compliance_framework(self, framework: str) -> List[Dict]:
+        framework_map = {
+            "cis": "CIS Benchmarks cloud security controls",
+            "nist": "NIST 800-53 cloud security controls",
+            "iso": "ISO 27001 cloud security requirements",
+        }
+        query = framework_map.get(framework.lower(), f"{framework} cloud security compliance")
+        return self.search_with_cache(query, num_results=5, category="compliance")
+
+    def buscar_zero_day(self) -> List[Dict]:
+        query = "zero-day vulnerability cloud providers 2026 cisa nvd"
+        return self.search_with_cache(query, num_results=5, category="cve")
+
+    def format_results_for_llm(self, results: List[Dict], max_results: int = 4) -> str:
+        if not results or "error" in results[0]:
+            return "⚠️ No se encontró información actualizada en fuentes oficiales."
+
+        lines = []
+        for i, r in enumerate(results[:max_results], 1):
+            title = r.get("title", "Sin título")[:150]
+            url = r.get("url", "")[:100]
+            snippet = r.get("snippet", "")[:200]
+            domain = r.get("domain", "")
+            lines.append(f"{i}. **{title}**")
+            if domain:
+                lines.append(f"   🌐 {domain}")
+            if snippet:
+                lines.append(f"   📝 {snippet}")
+            if url:
+                lines.append(f"   🔗 {url}")
+            lines.append("")
+        return "\n".join(lines).strip()
+
+    def is_official_source(self, url: str, category: str) -> bool:
+        sources = self.OFFICIAL_SOURCES.get(category, [])
+        return any(src in url.lower() for src in sources)
+
+    def get_cache_stats(self) -> Dict[str, Any]:
+        valid_entries = sum(1 for _, ts in self._cache.values() if self._is_cache_valid(ts))
+        return {
+            "total_entries": len(self._cache),
+            "valid_entries": valid_entries,
+            "expired_entries": len(self._cache) - valid_entries,
+            "cache_ttl_hours": self.cache_ttl.total_seconds() / 3600,
+        }
