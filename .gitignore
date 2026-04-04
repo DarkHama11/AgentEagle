@@ -20,6 +20,7 @@ ENV/
 
 # Logs y datos temporales
 logs/*.log
+!logs/.gitkeep
 data/cache/*
 !data/cache/.gitkeep
 data/logs/*
@@ -30,8 +31,9 @@ models/*.bin
 models/*.pt
 *.gguf
 *.safetensors
+!models/.gitkeep
 
-# Secrets y credenciales
+# Secrets
 .env
 *.key
 *.pem
@@ -39,7 +41,7 @@ secrets.json
 credentials.json
 aws_credentials.json
 
-# Reportes de tests
+# Reportes temporales
 logs/search_test_report_*.json
 
 # Resultados de ejecución
