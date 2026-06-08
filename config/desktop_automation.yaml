@@ -1,0 +1,66 @@
+desktop_automation:
+  enabled: true
+  
+  # Backends en orden de prioridad
+  backends:
+    - name: "ui_automation"
+      enabled: true
+      priority: 1
+    - name: "pywinauto"
+      enabled: true
+      priority: 2
+    - name: "autohotkey"
+      enabled: false
+      priority: 3
+    - name: "pyautogui"
+      enabled: false
+      priority: 4
+  
+  # Plugins
+  plugins:
+    pdfgear:
+      enabled: true
+      executable_paths:
+        - "C:\\Program Files\\PDFgear\\PDFgear.exe"
+        - "C:\\Program Files (x86)\\PDFgear\\PDFgear.exe"
+      default_timeout: 120
+      max_retries: 3
+    
+    word:
+      enabled: true
+      use_com: true
+    
+    browser:
+      enabled: true
+      default_browser: "chrome"
+  
+  # Reintentos
+  retry:
+    base_delay: 1.0
+    max_delay: 30.0
+    exponential_base: 2.0
+    jitter: 0.1
+  
+  # Auditoría
+  audit:
+    enabled: true
+    screenshot_dir: "data/automation_audits"
+    take_screenshot_on:
+      - "action_start"
+      - "action_end"
+      - "error"
+      - "recovery"
+  
+  # Aprobaciones
+  approval:
+    required_for:
+      - "delete_file"
+      - "send_email"
+      - "modify_system_settings"
+    timeout_seconds: 300
+  
+  # Ollama para NL
+  nl_interpreter:
+    model: "llama3.2:3b"
+    temperature: 0.1
+    max_tokens: 500

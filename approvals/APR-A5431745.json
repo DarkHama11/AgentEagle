@@ -1,0 +1,19 @@
+{
+  "job_id": "JOB-1DE77614",
+  "pipeline_name": "invoice_payment",
+  "step_id": "human_approval",
+  "requested_by": "orchestrator",
+  "title": "Aprobar pago de factura",
+  "description": "Verifica los datos extraídos antes de procesar el pago",
+  "payload": {
+    "file_path": "test_invoice.pdf",
+    "job_id": "JOB-A9D5C0D9"
+  },
+  "approval_id": "APR-A5431745",
+  "created_at": "2026-06-07T02:33:10.626443+00:00",
+  "expires_at": "2026-06-08T02:33:10.626443+00:00",
+  "status": "PENDING",
+  "resolved_at": null,
+  "resolved_by": null,
+  "resolution_notes": null
+}

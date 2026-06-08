@@ -1,0 +1,43 @@
+# ============================================================
+# AgentEagle 2.0 - Configuración de Impresoras por Grupo
+# ============================================================
+# Define grupos lógicos de impresoras para enrutamiento inteligente.
+# El Smart PrintAgent decide a qué grupo enviar cada documento.
+# ============================================================
+
+printers:
+  finance:
+    description: "Impresoras del departamento financiero"
+    default_printer: "HP LaserJet Professional M1212nf MFP"
+    printers:
+      - "HP LaserJet Professional M1212nf MFP"
+    settings:
+      color: false
+      duplex: true
+      priority: "normal"
+  
+  legal:
+    description: "Impresoras del departamento legal"
+    default_printer: "HP LaserJet Professional M1212nf MFP"
+    printers:
+      - "HP LaserJet Professional M1212nf MFP"
+    settings:
+      color: false
+      duplex: true
+      priority: "high"
+  
+  general:
+    description: "Impresoras de uso general"
+    default_printer: "HP LaserJet Professional M1212nf MFP"
+    printers:
+      - "HP LaserJet Professional M1212nf MFP"
+    settings:
+      color: false
+      duplex: false
+      priority: "normal"
+
+# Grupo por defecto cuando no hay coincidencia
+default_group: "general"
+
+# Modo de impresión: simulation | windows | cups
+print_mode: "windows"

@@ -1,0 +1,20 @@
+name: invoice_payment
+description: Pipeline de procesamiento y pago de facturas con aprobación humana
+
+steps:
+  # Paso 1: Procesar documento (OCR + Clasificación + Extracción)
+  - id: process_document
+    agent: document_agent
+    action: process
+
+  # Paso 2: APROBACIÓN HUMANA (PAUSA EL PIPELINE)
+  - id: human_approval
+    type: approval
+    title: "Aprobar pago de factura"
+    description: "Verifica los datos extraídos antes de procesar el pago"
+    expires_in_hours: 24
+
+  # Paso 3: Ejecutar pago (solo si fue aprobado)
+  - id: execute_payment
+    agent: payment_agent
+    action: pay

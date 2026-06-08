@@ -1,0 +1,65 @@
+# ============================================================
+# AgentEagle 2.0 - Reglas de Impresión por Tipo de Documento
+# ============================================================
+
+rules:
+  invoice:
+    description: "Facturas comerciales"
+    should_print: true
+    copies: 1
+    requires_approval: false
+    printer_group: "finance"
+    priority: "normal"
+    reason_template: "Factura de {supplier} por {amount}"
+
+  receipt:
+    description: "Recibos y tickets"
+    should_print: true
+    copies: 1
+    requires_approval: false
+    printer_group: "finance"
+    priority: "low"
+    reason_template: "Recibo de {supplier}"
+
+  contract:
+    description: "Contratos y acuerdos legales"
+    should_print: true
+    copies: 2
+    requires_approval: true
+    printer_group: "legal"
+    priority: "high"
+    reason_template: "Contrato que requiere revisión"
+
+  manual:
+    description: "Manuales técnicos"
+    should_print: false
+    copies: 0
+    requires_approval: false
+    printer_group: "general"
+    reason_template: "Manual digital - no requiere impresión"
+
+  report:
+    description: "Informes y reportes"
+    should_print: true
+    copies: 1
+    requires_approval: false
+    printer_group: "general"
+    priority: "normal"
+    reason_template: "Reporte para revisión"
+
+  other:
+    description: "Documentos no clasificados"
+    should_print: true
+    copies: 1
+    requires_approval: true
+    printer_group: "general"
+    priority: "low"
+    reason_template: "Documento no clasificado - requiere revisión"
+
+# Configuración de IA para decisiones
+ai_settings:
+  enabled: true
+  model_task: "print_decision"
+  temperature: 0.2
+  max_tokens: 300
+  fallback_to_rules: true

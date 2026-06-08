@@ -1,0 +1,33 @@
+# ============================================================
+# AgentEagle 2.0 - Configuración de Modelos LLM
+# ============================================================
+# Define qué modelo se utiliza para cada tarea.
+# Los agentes solicitan modelos por tipo de tarea, nunca por nombre.
+#
+# Para cambiar un modelo, solo edita este archivo y recarga:
+#   model_manager.reload()
+# ============================================================
+
+# Modelo para clasificación de documentos
+classification_model: llama3.2:3b
+
+# Modelo para extracción de campos estructurados
+extraction_model: llama3.2:3b
+
+# Modelo para generación de resúmenes
+summary_model: llama3.2:3b
+
+# Modelo para enrutamiento inteligente de consultas
+routing_model: llama3.2:3b
+
+# Modelo para chat general y conversación
+chat_model: llama3.2:3b
+
+# Modelo para tareas de razonamiento complejo
+reasoning_model: llama3.2:3b
+
+# Modelo para decisiones de impresión inteligente (Fase 7.1)
+print_decision_model: llama3.2:3b
+
+# Modelo por defecto (fallback)
+default_model: llama3.2:3b

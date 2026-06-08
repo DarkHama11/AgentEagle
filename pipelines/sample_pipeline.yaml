@@ -1,0 +1,7 @@
+name: sample_pipeline
+description: Pipeline de prueba para validar el orquestador y el event bus
+
+steps:
+  - id: step1
+    agent: document_agent
+    action: process

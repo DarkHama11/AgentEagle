@@ -8,8 +8,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.core.model_wrapper import ModelWrapper
-from src.agents.seguridad_agent import SeguridadAgent
-from src.agents.oficina_agent import OficinaAgent
+from agents.seguridad_agent import SeguridadAgent
+from agents import OficinaAgent
 
 TEST_PROMPTS = [
     ("seguridad", "hola", "Saludo básico"),

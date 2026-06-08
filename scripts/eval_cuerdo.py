@@ -9,7 +9,6 @@ Uso:
     python scripts/eval_cuerdo.py --agent seguridad
 """
 import sys
-import os
 import time
 import argparse
 import json
@@ -20,8 +19,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.core.model_wrapper import ModelWrapper
-from src.agents.seguridad_agent import SeguridadAgent
-from src.agents.oficina_agent import OficinaAgent
+from agents.seguridad_agent import SeguridadAgent
+from agents import OficinaAgent
 
 # === CONFIGURACIÓN DE PRUEBAS ===
 
@@ -152,7 +151,6 @@ def load_model_and_agents(model_key: str = "7b"):
 
 async def run_test_case(test: dict, agent_instance):
     """Ejecuta un caso de prueba individual."""
-    import asyncio
 
     result = {
         "id": test["id"],

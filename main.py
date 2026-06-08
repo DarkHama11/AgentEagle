@@ -1,88 +1,57 @@
-﻿# main.py
-"""AgentEagle++ Cloud Security Specialist - Entry Point."""
-import sys
 import logging
-import warnings
-from pathlib import Path
-import uvicorn
-from src.core.config import Config
-from src.server.api import app
+import sys
+import time
+import uuid
+import os
+from core.event_bus import EventBus
+from agents.functional.conversion_agent import ConversionAgent
+from agents.functional.desktop_automation_agent import DesktopAutomationAgent
 
-warnings.filterwarnings("ignore", category=FutureWarning)
-warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
-
-
-def setup_logging() -> logging.Logger:
-    log_dir = Config.LOGS_DIR
-    log_dir.mkdir(parents=True, exist_ok=True)
-    log_file = log_dir / "AgentEagle.log"
-    log_format = "%(asctime)s | %(name)-20s | %(levelname)-8s | %(message)s"
-    logging.basicConfig(level=getattr(logging, Config.LOG_LEVEL.upper(), logging.INFO), format=log_format,
-                        handlers=[logging.FileHandler(log_file, encoding="utf-8", mode="a"),
-                                  logging.StreamHandler(sys.stdout)], force=True)
-    logging.getLogger("uvicorn").setLevel(logging.WARNING)
-    return logging.getLogger("AgentEagle")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
+logger = logging.getLogger(__name__)
 
 
-logger = setup_logging()
+def initialize_system():
+    logger.info("🚀 Iniciando AgentEagle Core...")
+    event_bus = EventBus()
+    ConversionAgent(event_bus)
+    DesktopAutomationAgent(event_bus)
+    logger.info("✅ Sistema inicializado.")
+    return event_bus
 
 
-def check_system_requirements() -> bool:
-    logger = logging.getLogger("AgentEagle.check")
-    try:
-        import requests
-        response = requests.get("http://localhost:11434/api/tags", timeout=3)
-        if response.status_code == 200:
-            logger.info("✅ Ollama server detectado en localhost:11434")
-        else:
-            logger.warning("⚠️ Ollama respondió con estado inesperado")
-    except requests.ConnectionError:
-        logger.error("❌ No se pudo conectar con Ollama. Ejecuta: ollama serve")
-        return False
-    except Exception as e:
-        logger.warning(f"⚠️ No se pudo verificar Ollama: {e}")
+def test_flow(event_bus: EventBus):
+    logger.info("\n" + "=" * 70)
+    logger.info("🧪 INICIANDO PRUEBA DE CONVERSIÓN CON FALLBACK RPA")
+    logger.info("=" * 70 + "\n")
 
-    for dir_path, name in [(Config.MODELS_DIR, "MODELS"), (Config.LOGS_DIR, "LOGS"), (Config.DATA_DIR, "DATA")]:
-        try:
-            dir_path.mkdir(parents=True, exist_ok=True)
-            logger.info(f"✅ Directorio {name}: {dir_path}")
-        except PermissionError:
-            logger.error(f"❌ Sin permisos para escribir en {dir_path}")
-            return False
-    return True
+    # ⚠️ RUTA DEL PDF REAL PROPORCIONADA ⚠️
+    # La 'r' al principio es crucial para que Python lea las barras invertidas correctamente
+    test_file = r"D:\cosas\git\DOCUMENTACION\Hv_Hama.pdf"
 
+    # Verificación de seguridad
+    if not os.path.exists(test_file):
+        logger.error(f"❌ ERROR CRÍTICO: El archivo NO existe en la ruta: {test_file}")
+        logger.error("Por favor, verifica que la ruta sea exacta y el archivo exista.")
+        return
 
-def print_startup_banner():
-    print("\n" + "╔" + "═" * 58 + "╗")
-    print("║" + " 🦞 AgentEagle++ v2.1 ".center(58) + "║")
-    print("║" + " ☁️ Cloud Security Specialist ".center(58) + "║")
-    print("╠" + "═" * 58 + "╣")
-    print(f"║  📡 API: http://{Config.API_HOST}:{Config.API_PORT}".ljust(59) + "║")
-    print(f"║  🤖 Modelo: {Config.MODELS.get(Config.DEFAULT_MODEL_KEY, {}).get('ollama_model', 'llama3.2:3b')}".ljust(
-        59) + "║")
-    print(f"║  🔧 Agentes: seguridad (cloud), oficina".ljust(59) + "║")
-    print(f"║  ⚡ Performance: ~5s promedio (RTX 3050)".ljust(59) + "║")
-    print("╚" + "═" * 58 + "╝\n")
+    logger.info(f"✅ Archivo de entrada encontrado: {test_file}")
 
-
-def main():
-    logger.info("🚀 Iniciando AgentEagle++ Cloud Security...")
-    if not check_system_requirements():
-        logger.error("❌ Prerequisitos no cumplidos. Abortando.")
-        sys.exit(1)
-    print_startup_banner()
-    logger.info(f"📡 Iniciando servidor en {Config.API_HOST}:{Config.API_PORT}")
-    try:
-        uvicorn.run(app, host=Config.API_HOST, port=Config.API_PORT, log_level=Config.LOG_LEVEL.lower(), reload=False,
-                    workers=1, timeout_keep_alive=30, limit_concurrency=5)
-    except KeyboardInterrupt:
-        logger.info("👋 Interrupción recibida. Cerrando...")
-    except Exception as e:
-        logger.error(f"❌ Error en servidor: {e}", exc_info=True)
-        sys.exit(1)
-    finally:
-        logger.info("🔚 AgentEagle++ finalizado")
+    event_bus.publish("CONVERSION_REQUEST", {
+        "request_id": str(uuid.uuid4()),
+        "file_path": test_file,
+        "target_format": "docx",
+        "user_id": "telegram_user_123"
+    })
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        event_bus = initialize_system()
+        test_flow(event_bus)
+        logger.info("\n🟢 Sistema en ejecución. Esperando respuesta... (Presiona Ctrl+C para detener)")
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        logger.info("\n🛑 Deteniendo sistema...")
+        sys.exit(0)

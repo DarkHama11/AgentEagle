@@ -1,0 +1,9 @@
+name: document_processing
+description: Pipeline completo de procesamiento de documentos
+
+steps:
+  - id: process_document
+    agent: document_agent
+    action: process
+    payload:
+      file_path: "/documents/invoice.pdf"

@@ -1,0 +1,20 @@
+# Eventos del Desktop Automation Agent
+DESKTOP_AUTOMATION_EVENTS = [
+    ("desktop.session_created", "Sesión de automatización creada"),
+    ("desktop.session_started", "Sesión iniciada"),
+    ("desktop.action_started", "Acción iniciada"),
+    ("desktop.action_completed", "Acción completada"),
+    ("desktop.action_failed", "Acción fallida"),
+    ("desktop.action_retrying", "Reintentando acción"),
+    ("desktop.approval_required", "Aprobación humana requerida"),
+    ("desktop.approval_granted", "Aprobación concedida"),
+    ("desktop.approval_denied", "Aprobación denegada"),
+    ("desktop.recovery_started", "Recuperación iniciada"),
+    ("desktop.recovery_completed", "Recuperación completada"),
+    ("desktop.screenshot_taken", "Captura de pantalla tomada"),
+    ("desktop.plugin_registered", "Plugin registrado"),
+    ("desktop.plugin_error", "Error en plugin"),
+    ("desktop.session_completed", "Sesión completada"),
+    ("desktop.session_failed", "Sesión fallida"),
+    ("desktop.nl_interpreted", "Instrucción en lenguaje natural interpretada"),
+]

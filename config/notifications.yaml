@@ -1,0 +1,41 @@
+# ============================================================
+# AgentEagle 2.0 - Configuración de Notificaciones e Impresión
+# ============================================================
+
+telegram:
+  enabled: true
+  bot_token: "8884679745:AAGZVyGTHIw1AtamZIhpphaTdxYQayCqQs0"
+  chat_id: "1193717225"
+  parse_mode: "HTML"
+  disable_notification: false
+  approval_chat_ids:
+    - "1193717225"
+
+printing:
+  enabled: true
+  mode: "windows"
+  default_printer: "HP LaserJet Professional M1212nf MFP"
+  supported_formats:
+    - "pdf"
+    - "docx"
+    - "png"
+    - "jpg"
+    - "jpeg"
+  max_file_size_mb: 20
+  uploads_dir: "data/uploads"
+  state_dir: "state/prints"
+
+email:
+  enabled: false
+
+slack:
+  enabled: false
+
+discord:
+  enabled: false
+
+teams:
+  enabled: false
+
+webhook:
+  enabled: false

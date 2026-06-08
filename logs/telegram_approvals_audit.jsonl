@@ -1,0 +1,2 @@
+{"approval_id": "APR-910D278E", "action": "request_sent", "telegram_user": "system", "telegram_user_id": 0, "timestamp": "2026-06-07T03:04:27.934776+00:00", "channel": "telegram", "chat_id": "1193717225", "message_id": 16}
+{"approval_id": "APR-910D278E", "action": "approved", "telegram_user": "harold", "telegram_user_id": 1193717225, "timestamp": "2026-06-07T03:04:44.774641+00:00", "channel": "telegram", "chat_id": 1193717225, "message_id": 16}

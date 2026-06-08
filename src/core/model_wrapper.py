@@ -1,5 +1,6 @@
-﻿# src/core/model_wrapper.py
-"""AgentEagle++ - Wrapper para usar modelos a través de Ollama."""
+﻿# -*- coding: utf-8 -*-
+"""AgentEagle - Wrapper para usar modelos a traves de Ollama."""
+
 import logging
 from typing import Optional, Dict, Any
 from .ollama_client import OllamaClient
@@ -8,14 +9,14 @@ logger = logging.getLogger(__name__)
 
 
 class ModelWrapper:
-    """Wrapper con soporte para múltiples modelos."""
+    """Wrapper con soporte para multiples modelos."""
 
-    def __init__(self, model_key: str = "3b"):
+    def __init__(self, model_key: str = "seguridad_experto"):
         from .config import Config
         self.model_key = model_key
-        self.config = Config.MODELS.get(model_key, Config.MODELS["3b"])
+        self.config = Config.MODELS.get(model_key, Config.MODELS["general"])
         self.cliente: Optional[OllamaClient] = None
-        self.model_name = self.config.get("ollama_model", "llama3.2:3b")
+        self.model_name = self.config.get("ollama_model", "llama3.2:1b")
         self.default_options = {
             "temperature": self.config.get("temperature", 0.2),
             "num_predict": self.config.get("max_tokens", 384),
@@ -24,46 +25,53 @@ class ModelWrapper:
         logger.info(f"📦 ModelWrapper: '{self.model_name}' (key: {model_key})")
 
     def load(self) -> "ModelWrapper":
-        self.cliente = OllamaClient(model=self.model_name)
-        models = self.cliente.list_models()
-        if self.model_name in models:
-            logger.info(f"✅ Modelo '{self.model_name}' disponible")
-        else:
-            logger.warning(f"⚠️ Modelo '{self.model_name}' no encontrado. Disponibles: {models}")
+        """Inicializar cliente Ollama."""
+        from .config import Config
+        self.cliente = OllamaClient(base_url=Config.OLLAMA_BASE_URL)
+        logger.info(f"✅ Cliente Ollama conectado: {Config.OLLAMA_BASE_URL}")
         return self
 
-    def generate(self, prompt: str, max_tokens: Optional[int] = None, temperature: Optional[float] = None,
-                 model: Optional[str] = None, options: Optional[Dict[str, Any]] = None, **kwargs) -> str:
-        if self.cliente is None:
-            raise RuntimeError("ModelWrapper no inicializado. Llama a .load() primero.")
+    def generate(
+        self,
+        prompt: str,
+        system: Optional[str] = None,
+        options: Optional[Dict[str, Any]] = None,
+        stream: bool = False
+    ) -> Any:
+        """Generar respuesta del modelo."""
+        if not self.cliente:
+            self.load()
+        merged_options = {**self.default_options, **(options or {})}
+        return self.cliente.generate(
+            model=self.model_name,
+            prompt=prompt,
+            system=system,
+            options=merged_options,
+            stream=stream
+        )
 
-        final_options = self.default_options.copy()
-        if options:
-            final_options.update(options)
-        if temperature is not None:
-            final_options["temperature"] = temperature
-        if max_tokens is not None:
-            final_options["num_predict"] = max_tokens
-        for key in ["top_p", "stop"]:
-            if key in kwargs:
-                final_options[key] = kwargs[key]
-
-        target_model = model or self.model_name
-        logger.debug(
-            f"🔄 Generate: '{target_model}' | temp={final_options.get('temperature')}, tokens={final_options.get('num_predict')}")
-
-        try:
-            return self.cliente.generate(prompt=prompt, model=target_model, options=final_options).strip()
-        except TypeError as e:
-            if "unexpected keyword argument" in str(e):
-                logger.debug("⚡ Fallback a formato legacy")
-                return self.cliente.generate(prompt, final_options.get("num_predict", 384),
-                                             final_options.get("temperature", 0.2)).strip()
-            raise
-        except Exception as e:
-            logger.error(f"❌ Error en generate: {e}")
-            return ""
+    def chat(
+        self,
+        messages: list,
+        options: Optional[Dict[str, Any]] = None,
+        stream: bool = False
+    ) -> Any:
+        """Enviar conversacion al modelo."""
+        if not self.cliente:
+            self.load()
+        merged_options = {**self.default_options, **(options or {})}
+        return self.cliente.chat(
+            model=self.model_name,
+            messages=messages,
+            options=merged_options,
+            stream=stream
+        )
 
     def get_model_info(self) -> Dict[str, Any]:
-        return {"model_key": self.model_key, "model_name": self.model_name, "default_options": self.default_options,
-                "client_connected": self.cliente is not None}
+        """Retornar informacion del modelo configurado."""
+        return {
+            "key": self.model_key,
+            "name": self.model_name,
+            "config": self.config,
+            "default_options": self.default_options,
+        }

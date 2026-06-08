@@ -1,0 +1,19 @@
+{
+  "job_id": "JOB-B7BC7CC1",
+  "pipeline_name": "invoice_payment",
+  "step_id": "human_approval",
+  "requested_by": "orchestrator",
+  "title": "Aprobar pago de factura",
+  "description": "Verifica los datos extraídos antes de procesar el pago",
+  "payload": {
+    "file_path": "test_invoice.pdf",
+    "job_id": "JOB-493C2800"
+  },
+  "approval_id": "APR-910D278E",
+  "created_at": "2026-06-07T03:04:27.326630+00:00",
+  "expires_at": "2026-06-08T03:04:27.326630+00:00",
+  "status": "APPROVED",
+  "resolved_at": "2026-06-07T03:04:43.367949+00:00",
+  "resolved_by": "telegram:harold",
+  "resolution_notes": "Aprobado desde Telegram por harold"
+}
