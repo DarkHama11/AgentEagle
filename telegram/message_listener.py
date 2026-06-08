@@ -207,25 +207,21 @@ class TelegramMessageListener:
                 self._send_message(chat_id,
                                    f"📥 <b>Documento recibido</b>\n\n🆔 <b>Job:</b> <code>{job_id}</code>\n\n🖨️ <b>Analizando para imprimir...</b>")
 
-        from event_bus.event import Event
-        self.event_bus.publish(Event(
-            event_type=event_type,
-            source="telegram_listener",
-            payload={
-                "job_id": job_id,
-                "print_job_id": job_id,
-                "telegram_chat_id": chat_id,
-                "telegram_message_id": message_id,
-                "telegram_user_id": user_id,
-                "telegram_username": username,
-                "file_id": file_id,
-                "file_name": file_name,
-                "mime_type": mime_type,
-                "file_size": file_size,
-                "extension": extension,
-                "caption": caption
-            }
-        ))
+        self.event_bus.publish(event_type, {
+            "job_id": job_id,
+            "print_job_id": job_id,
+            "telegram_chat_id": chat_id,
+            "telegram_message_id": message_id,
+            "telegram_user_id": user_id,
+            "telegram_username": username,
+            "file_id": file_id,
+            "file_name": file_name,
+            "mime_type": mime_type,
+            "file_size": file_size,
+            "extension": extension,
+            "caption": caption,
+            "source": "telegram_listener"
+        })
 
     def _handle_photo(self, photo: Dict, chat_id: str, user_id: int,
                       username: str, message_id: int, caption: str = "") -> None:
@@ -256,25 +252,17 @@ class TelegramMessageListener:
             self._send_message(chat_id,
                                f"🖼️ <b>Imagen recibida</b>\n\n🖨️ <b>Analizando para imprimir...</b>\n🆔 <b>Job:</b> <code>{job_id}</code>")
 
-        from event_bus.event import Event
-        self.event_bus.publish(Event(
-            event_type=event_type,
-            source="telegram_listener",
-            payload={
-                "job_id": job_id,
-                "print_job_id": job_id,
-                "telegram_chat_id": chat_id,
-                "telegram_message_id": message_id,
-                "telegram_user_id": user_id,
-                "telegram_username": username,
-                "file_id": file_id,
-                "file_name": file_name,
-                "mime_type": "image/jpeg",
-                "file_size": file_size,
-                "extension": "jpg",
-                "caption": caption
-            }
-        ))
+        self.event_bus.publish(event_type, {
+            "job_id": job_id,
+            "print_job_id": job_id,
+            "telegram_chat_id": chat_id,
+            "telegram_message_id": message_id,
+            "telegram_user_id": user_id,
+            "telegram_username": username,
+            "photo_file_id": file_id,
+            "caption": caption,
+            "source": "telegram_listener"
+        })
 
     def _send_message(self, chat_id: str, text: str) -> None:
         try:
