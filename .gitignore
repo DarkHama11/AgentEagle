@@ -1,50 +1,24 @@
-﻿# Python
+﻿# Entorno virtual
+venv/
+.venv/
 __pycache__/
 *.py[cod]
-*.class
-*.so
-.Python
-*.egg-info/
-.eggs/
 
-# Entornos virtuales
-.venv/
-venv/
-ENV/
+# Datos temporales
+data/telegram_uploads/
+data/telegram_outputs/
 
-# IDEs
-.idea/
-.vscode/
-*.swp
-*.swo
+# Archivos de debug
+debug_*.png
 
-# Logs y datos temporales
-logs/*.log
-!logs/.gitkeep
-data/cache/*
-!data/cache/.gitkeep
-data/logs/*
-!data/logs/.gitkeep
-
-# Modelos grandes
-models/*.bin
-models/*.pt
-*.gguf
-*.safetensors
-!models/.gitkeep
-
-# Secrets
+# Variables de entorno
 .env
-*.key
-*.pem
-secrets.json
-credentials.json
-aws_credentials.json
+.env.local
 
-# Reportes temporales
-logs/search_test_report_*.json
+# IDE
+.vscode/
+.idea/
 
-# Resultados de ejecución
-results/
-output/
-*.tmp
+# OS
+Thumbs.db
+.DS_Store
