@@ -6,8 +6,9 @@ from services.desktop_automation.session_manager import SessionManager
 from services.desktop_automation.backends.pywinauto_backend import PywinautoBackend
 from dto.desktop_automation.action_dto import ActionRequest
 
-# ⚠️ IMPORTANTE: Esta línea fuerza la carga del plugin para que el decorador @PluginRegistry.register se ejecute
+# ⚠️ IMPORTANTE: Importar TODOS los plugins para que se registren
 from services.desktop_automation.plugins import pdfgear_plugin
+from services.desktop_automation.plugins import ocr_plugin  # 🆕 OCR Plugin
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,10 @@ class DesktopAutomationAgent(BaseAgent):
         super().__init__("DesktopAutomationAgent", event_bus)
         self.backend = PywinautoBackend()
         self.subscribe("DESKTOP_AUTOMATION_REQUEST", self._handle_request)
+
+        # 🆕 Log de plugins registrados
+        registered_plugins = PluginRegistry.list_plugins()
+        logger.info(f"🔌 Plugins registrados: {list(registered_plugins.keys())}")
 
     def _handle_request(self, event):
         payload = event.get("payload", {})
@@ -31,8 +36,14 @@ class DesktopAutomationAgent(BaseAgent):
         )
 
         try:
+            # 🆕 Log del action_type recibido
+            logger.info(f"🔌 [DesktopAutomation] Action type: {request.action_type}")
+
             plugin = PluginRegistry.get_plugin(request.action_type)
+            logger.info(f"🔌 [DesktopAutomation] Plugin encontrado: {plugin.__class__.__name__}")
+
             result = plugin.execute(request, self.backend)
+
             self.publish("DESKTOP_AUTOMATION_RESPONSE", {
                 "request_id": request_id,
                 "session_id": session_id,

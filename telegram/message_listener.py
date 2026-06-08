@@ -54,7 +54,7 @@ class TelegramMessageListener:
 
         logger.info(f"📨 [MessageListener] Callback de comando procesado: {command} para chat {chat_id}")
 
-        # 🆕 Mapeo actualizado con smart_convert
+        # Mapeo actualizado con smart_convert
         mode_mapping = {
             'doc': 'analyze',
             'process': 'analyze',
@@ -66,8 +66,8 @@ class TelegramMessageListener:
             'word2pdf': 'word2pdf',
             'ocr': 'ocr',
             'texto': 'ocr',
-            'smart_convert': 'smart_reconstruct',  # 🆕
-            'reconstruir': 'smart_reconstruct',  # 🆕
+            'smart_convert': 'smart_reconstruct',
+            'reconstruir': 'smart_reconstruct',
             'status': None,
             'printers': None,
             'help': None,
@@ -78,51 +78,49 @@ class TelegramMessageListener:
             self.command_handler.set_chat_mode(chat_id, new_mode)
             logger.info(f"✅ Modo de chat {chat_id} actualizado a: {new_mode}")
 
-        try:
-            requests.post(
-                f"{self.base_url}/answerCallbackQuery",
-                json={
-                    "callback_query_id": callback_id,
-                    "text": f"Ejecutando /{command}",
-                    "show_alert": False
-                },
-                timeout=5
-            )
-        except Exception as e:
-            logger.error(f"Error respondiendo callback: {e}")
-
-        handler_method = self.command_handler.commands.get(command)
-        if handler_method:
-            try:
-                handler_method(chat_id, '', callback_query)
-            except Exception as e:
-                logger.error(f"Error ejecutando comando desde callback: {e}", exc_info=True)
-
     def _handle_message(self, message: Dict[str, Any]) -> None:
+        """Maneja todos los mensajes entrantes"""
         chat = message.get('chat', {})
         chat_id = str(chat.get('id', ''))
-        from_user = message.get('from', {})
-        user_id = from_user.get('id')
-        username = from_user.get('username', 'unknown')
-        message_id = message.get('message_id')
-        caption = message.get('caption', '').strip()
 
         if chat_id not in self.allowed_chat_ids:
             logger.debug(f"Mensaje ignorado de chat no autorizado: {chat_id}")
             return
 
-        text = message.get('text', '')
-        if text and text.strip().startswith('/'):
-            if self.command_handler:
-                is_command = self.command_handler.handle_command(message)
-                if is_command:
-                    return
+        from_user = message.get('from', {})
+        user_id = from_user.get('id', 0)
+        username = from_user.get('username', 'unknown')
+        message_id = message.get('message_id', 0)
+        caption = message.get('caption', '')
 
+        # Verificar si es un comando
+        if self.command_handler:
+            is_command = self.command_handler.handle_command(message)
+            if is_command:
+                return
+
+        # 🆕 Si es un mensaje de texto (no comando), enviarlo al RouterAgent
+        text = message.get('text', '')
+        if text and not text.startswith('/'):
+            logger.info(f"📨 Texto recibido de @{username}: '{text[:50]}...'")
+
+            # Publicar evento para el RouterAgent (Ollama)
+            self.event_bus.publish("message.text_received", {
+                "text": text,
+                "chat_id": chat_id,
+                "message_id": message_id,
+                "user_id": user_id,
+                "username": username
+            })
+            return
+
+        # Manejar documentos
         document = message.get('document')
         if document:
             self._handle_document(document, chat_id, user_id, username, message_id, caption)
             return
 
+        # Manejar fotos
         photo = message.get('photo')
         if photo:
             best_photo = max(photo, key=lambda p: p.get('file_size', 0))
@@ -145,7 +143,7 @@ class TelegramMessageListener:
             self._send_message(chat_id, f"❌ Formato no soportado: .{extension}")
             return
 
-        job_id = f"JOB-{uuid.uuid4().hex[:8].upper()}"
+        job_id = str(uuid.uuid4())
 
         mode = 'print'
         if self.command_handler:
@@ -153,7 +151,7 @@ class TelegramMessageListener:
 
         logger.info(f"📄 Documento recibido: {file_name} | Modo: {mode} | Caption: '{caption}'")
 
-        # 🆕 Validación para smart_reconstruct
+        # Validación para smart_reconstruct
         if mode == 'smart_reconstruct' and extension != 'pdf':
             self._send_message(chat_id,
                                "❌ Este modo requiere un archivo <b>PDF</b>.\n\nUsa /smart_convert y envía un PDF.")
@@ -172,7 +170,7 @@ class TelegramMessageListener:
             self._send_message(chat_id, "❌ Este modo requiere una <b>imagen</b> o <b>PDF escaneado</b>.")
             return
 
-        # 🆕 Determinar evento según modo (incluye smart_reconstruct)
+        # Determinar evento según modo
         if mode == 'smart_reconstruct':
             event_type = 'conversion.pdf_to_word_smart'
             self._send_message(chat_id,
@@ -181,7 +179,7 @@ class TelegramMessageListener:
             if extension == 'pdf':
                 event_type = 'conversion.ocr_pdf'
                 self._send_message(chat_id,
-                                   f" <b>PDF recibido</b>\n\n <b>Extrayendo texto con OCR...</b>\n🆔 <b>Job:</b> <code>{job_id}</code>")
+                                   f"📄 <b>PDF recibido</b>\n\n🔍 <b>Extrayendo texto con OCR...</b>\n🆔 <b>Job:</b> <code>{job_id}</code>")
             else:
                 event_type = 'conversion.ocr_image'
                 self._send_message(chat_id,
@@ -193,11 +191,11 @@ class TelegramMessageListener:
         elif mode == 'word2pdf':
             event_type = 'conversion.word_to_pdf'
             self._send_message(chat_id,
-                               f"📥 <b>DOCX recibido</b>\n\n🔄 <b>Convirtiendo Word → PDF...</b>\n <b>Job:</b> <code>{job_id}</code>")
+                               f"📥 <b>DOCX recibido</b>\n\n🔄 <b>Convirtiendo Word → PDF...</b>\n🆔 <b>Job:</b> <code>{job_id}</code>")
         elif mode == 'analyze':
             event_type = 'document.analysis_requested'
             self._send_message(chat_id,
-                               f" <b>Documento recibido</b>\n\n <b>Analizando con IA (sin imprimir)...</b>\n🆔 <b>Job:</b> <code>{job_id}</code>")
+                               f"📄 <b>Documento recibido</b>\n\n🧠 <b>Analizando con IA (sin imprimir)...</b>\n🆔 <b>Job:</b> <code>{job_id}</code>")
         else:  # print
             event_type = 'document.received'
             if caption:
@@ -229,24 +227,25 @@ class TelegramMessageListener:
         file_size = photo.get('file_size', 0)
 
         if file_size > self.max_file_size_bytes:
-            self._send_message(chat_id, f"❌ Imagen demasiado grande ({file_size / 1024 / 1024:.1f} MB)")
+            self._send_message(chat_id, f"❌ Imagen demasiado grande ({file_size / 1024 / 1024:.1f} MB).")
             return
 
-        job_id = f"JOB-{uuid.uuid4().hex[:8].upper()}"
-        file_name = f"photo_{job_id}.jpg"
+        job_id = str(uuid.uuid4())
 
         mode = 'print'
         if self.command_handler:
             mode = self.command_handler.get_chat_mode(chat_id)
 
+        logger.info(f"🖼️ Foto recibida | Modo: {mode} | Caption: '{caption}'")
+
         if mode == 'ocr':
             event_type = 'conversion.ocr_image'
             self._send_message(chat_id,
-                               f"🖼️ <b>Imagen recibida</b>\n\n <b>Extrayendo texto con OCR...</b>\n🆔 <b>Job:</b> <code>{job_id}</code>")
+                               f"🖼️ <b>Imagen recibida</b>\n\n🔍 <b>Extrayendo texto con OCR...</b>\n🆔 <b>Job:</b> <code>{job_id}</code>")
         elif mode == 'analyze':
             event_type = 'document.analysis_requested'
             self._send_message(chat_id,
-                               f"🖼️ <b>Imagen recibida</b>\n\n🔍 <b>Analizando...</b>\n🆔 <b>Job:</b> <code>{job_id}</code>")
+                               f"🖼️ <b>Imagen recibida</b>\n\n🧠 <b>Analizando...</b>\n🆔 <b>Job:</b> <code>{job_id}</code>")
         else:
             event_type = 'document.received'
             self._send_message(chat_id,
@@ -264,9 +263,21 @@ class TelegramMessageListener:
             "source": "telegram_listener"
         })
 
-    def _send_message(self, chat_id: str, text: str) -> None:
+    def _send_message(self, chat_id: str, text: str, reply_markup: Optional[Dict] = None) -> None:
+        """Envía un mensaje a Telegram"""
         try:
-            requests.post(f"{self.base_url}/sendMessage", json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
-                          timeout=10)
+            payload = {
+                "chat_id": chat_id,
+                "text": text,
+                "parse_mode": "HTML"
+            }
+            if reply_markup:
+                payload["reply_markup"] = reply_markup
+
+            requests.post(
+                f"{self.base_url}/sendMessage",
+                json=payload,
+                timeout=10
+            )
         except Exception as e:
             logger.error(f"Error enviando mensaje: {e}")

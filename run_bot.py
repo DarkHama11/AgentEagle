@@ -17,10 +17,10 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    """Punto de entrada principal de AgentEagle con Telegram"""
+    """Punto de entrada principal de AgentEagle con Telegram y Ollama"""
 
     logger.info("=" * 70)
-    logger.info("🦅 AgentEagle - Iniciando sistema completo...")
+    logger.info("🦅 AgentEagle - Iniciando sistema completo con IA...")
     logger.info("=" * 70)
 
     # 1. Inicializar EventBus
@@ -28,9 +28,19 @@ def main():
     event_bus = EventBus()
     logger.info("✅ EventBus inicializado")
 
-    # 2. Registrar agentes
+    # 2. Inicializar LLMService (Ollama)
+    from services.llm_service import LLMService
+    llm_service = LLMService()
+
+    if llm_service.is_available():
+        logger.info("✅ LLMService (Ollama) disponible")
+    else:
+        logger.warning("⚠️ LLMService (Ollama) no disponible. Algunas funciones de IA no estarán disponibles.")
+
+    # 3. Registrar agentes
     from agents.functional.conversion_agent import ConversionAgent
     from agents.functional.desktop_automation_agent import DesktopAutomationAgent
+    from agents.functional.router_agent import RouterAgent
 
     ConversionAgent(event_bus)
     logger.info("✅ ConversionAgent registrado")
@@ -38,7 +48,10 @@ def main():
     DesktopAutomationAgent(event_bus)
     logger.info("✅ DesktopAutomationAgent registrado")
 
-    # 3. Configurar Telegram
+    RouterAgent(event_bus, llm_service)
+    logger.info("✅ RouterAgent registrado (con Ollama)")
+
+    # 4. Configurar Telegram
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
@@ -50,12 +63,12 @@ def main():
         logger.error("❌ TELEGRAM_CHAT_ID no configurado en .env")
         sys.exit(1)
 
-    # 4. Inicializar Bridge (conecta Telegram con RPA)
+    # 5. Inicializar Bridge (conecta Telegram con RPA)
     from telegram_conversion_bridge import TelegramConversionBridge
     bridge = TelegramConversionBridge(event_bus, bot_token)
     logger.info("✅ TelegramConversionBridge inicializado")
 
-    # 5. Inicializar sistema de Telegram
+    # 6. Inicializar sistema de Telegram
     from telegram import UnifiedTelegramListener
     from telegram.command_handler import TelegramCommandHandler
     from telegram.message_listener import TelegramMessageListener
@@ -92,11 +105,11 @@ def main():
     unified_listener.register_callback_handler(message_listener.handle_callback)
     logger.info("✅ Handlers registrados en UnifiedTelegramListener")
 
-    # 6. Iniciar el listener
+    # 7. Iniciar el listener
     unified_listener.start()
 
     logger.info("=" * 70)
-    logger.info("🤖 Bot de Telegram ACTIVO")
+    logger.info("🤖 Bot de Telegram ACTIVO con IA (Ollama)")
     logger.info(f"📱 Chat autorizado: {chat_id}")
     logger.info("💡 Comandos disponibles:")
     logger.info("   /start    - Mensaje de bienvenida")
@@ -106,10 +119,15 @@ def main():
     logger.info("   /ocr      - Extraer texto de imagen")
     logger.info("   /status   - Estado del sistema")
     logger.info("   /help     - Ayuda")
+    logger.info("")
+    logger.info("🧠 También puedes escribir en lenguaje natural:")
+    logger.info("   'convierte este PDF a Word'")
+    logger.info("   'necesito imprimir este documento'")
+    logger.info("   'extrae el texto de esta imagen'")
     logger.info("=" * 70)
     logger.info("🟢 Sistema en ejecución. Presiona Ctrl+C para detener.")
 
-    # 7. Mantener el sistema corriendo
+    # 8. Mantener el sistema corriendo
     try:
         while True:
             time.sleep(1)
